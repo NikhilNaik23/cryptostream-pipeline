@@ -6,6 +6,7 @@ import websocket
 from kafka import KafkaProducer
 
 from producer.config import BINANCE_WS_URL, KAFKA_TOPIC, KAFKA_BOOTSTRAP_SERVERS
+from producer.parser import parse_trade
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,22 +24,6 @@ producer = KafkaProducer(
 )
 
 sent_count = 0
-
-def parse_trade(raw_message: str):
-    payload = json.loads(raw_message)
-    data = payload.get("data", {})
-    
-    if data.get("e") != "trade":
-        return None
-    
-    return {
-        "symbol": data["s"],
-        "trade_id": data["t"],
-        "price": float(data["p"]),
-        "quantity": float(data["q"]),
-        "event_time": data["T"],
-        "is_buyer_maker": data["m"],
-    }
     
 def on_message(ws, message):
     global sent_count
