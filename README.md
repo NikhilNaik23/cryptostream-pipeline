@@ -3,6 +3,8 @@
 A streaming data pipeline that ingests live crypto trades, computes rolling
 metrics in real time, and visualizes them on an auto-refreshing dashboard.
 
+![Demo](docs/demo.gif)
+
 ![Dashboard](docs/screenshots/dashboard.png)
 
 ## Architecture
