@@ -37,3 +37,17 @@ CREATE TABLE IF NOT EXISTS price_alerts (
     direction     TEXT,
     PRIMARY KEY (symbol, window_start, window_end)
 );
+
+-- One row per coin per day, built by the Airflow job
+CREATE TABLE IF NOT EXISTS daily_summary (
+    summary_date  DATE             NOT NULL,
+    symbol        TEXT             NOT NULL,
+    open_price    DOUBLE PRECISION,
+    close_price   DOUBLE PRECISION,
+    high_price    DOUBLE PRECISION,
+    low_price     DOUBLE PRECISION,
+    vwap          DOUBLE PRECISION,
+    total_volume  DOUBLE PRECISION,
+    trade_count   BIGINT,
+    PRIMARY KEY (summary_date, symbol)
+);

@@ -6,6 +6,7 @@ metrics in real time, and visualizes them on an auto-refreshing dashboard.
 ![Demo](docs/demo.gif)
 
 ![Dashboard](docs/screenshots/dashboard.png)
+![Daily summary using Airflow](docs/screenshots/airflow.png)
 
 ## Architecture
 

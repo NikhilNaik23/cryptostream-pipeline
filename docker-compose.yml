@@ -49,6 +49,21 @@ services:
       - postgres
     restart: unless-stopped
 
+  airflow:
+    image: apache/airflow:2.10.5
+    container_name: airflow
+    command: standalone
+    ports:
+      - "8081:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW_CONN_CRYPTO_PG: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
 volumes:
   kafka_data:
   postgres_data:
