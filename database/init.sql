@@ -25,3 +25,15 @@ CREATE TABLE IF NOT EXISTS trade_metrics (
     total_volume  DOUBLE PRECISION,
     PRIMARY KEY (symbol, window_start, window_end)
 );
+
+-- Price-spike alerts: one row per coin per 30-second window that moved a lot
+CREATE TABLE IF NOT EXISTS price_alerts (
+    symbol        TEXT             NOT NULL,
+    window_start  TIMESTAMPTZ      NOT NULL,
+    window_end    TIMESTAMPTZ      NOT NULL,
+    first_price   DOUBLE PRECISION,
+    last_price    DOUBLE PRECISION,
+    move_pct      DOUBLE PRECISION,
+    direction     TEXT,
+    PRIMARY KEY (symbol, window_start, window_end)
+);

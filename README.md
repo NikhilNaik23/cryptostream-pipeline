@@ -40,6 +40,10 @@ flowchart LR
 
 Average price, VWAP, min/max, volatility (std dev), trade count, total volume.
 
+**Price-spike alerts:** a third streaming query compares the first and last
+price in each 30-second window and records an alert when the move exceeds a
+configurable threshold (`ALERT_THRESHOLD_PCT`).
+
 ## Run it
 
 Requirements: Docker, Python 3.12, Java 17.
@@ -75,6 +79,5 @@ python -m pytest -v
 ## Future improvements
 
 - Load results into BigQuery and use Looker Studio
-- Add price-spike alerts
 - Add Redis for a "latest price" cache
 - CI with GitHub Actions

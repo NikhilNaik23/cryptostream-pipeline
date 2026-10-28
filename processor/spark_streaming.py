@@ -13,6 +13,7 @@ load_dotenv()
 
 KAFKA_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "crypto_trades")
+ALERT_THRESHOLD_PCT = float(os.getenv("ALERT_THRESHOLD_PCT", "0.5"))
 
 PG_CONFIG = {
     "host": os.getenv("POSTGRES_HOST", "localhost"),
@@ -136,6 +137,51 @@ def write_metrics(batch_df, batch_id):
         rows,
     )
 
+# ---------- 5b. Price-spike detection ----------
+# first/last price per 30-second window per coin, then the % move between them.
+movement = (
+    trades.withWatermark("event_ts", "10 seconds")
+    .groupBy(F.window("event_ts", "30 seconds"), "symbol")
+    .agg(
+        F.min_by("price", "event_ts").alias("first_price"),  # price at the earliest trade
+        F.max_by("price", "event_ts").alias("last_price"),   # price at the latest trade
+    )
+    .select(
+        "symbol",
+        F.col("window.start").cast("long").alias("window_start"),
+        F.col("window.end").cast("long").alias("window_end"),
+        "first_price",
+        "last_price",
+        ((F.col("last_price") - F.col("first_price")) / F.col("first_price") * 100).alias("move_pct"),
+    )
+)
+
+
+def write_alerts(batch_df, batch_id):
+    """Keep only windows that moved at least the threshold, then upsert them."""
+    # JS: rows.filter(r => Math.abs(r.move_pct) >= THRESHOLD).map(r => [...])
+    rows = [
+        (r.symbol, to_dt(r.window_start), to_dt(r.window_end),
+         r.first_price, r.last_price, r.move_pct,
+         "UP" if r.move_pct > 0 else "DOWN")
+        for r in batch_df.collect()
+        if r.move_pct is not None and abs(r.move_pct) >= ALERT_THRESHOLD_PCT
+    ]
+    if not rows:
+        return
+    run_sql(
+        """
+        INSERT INTO price_alerts
+            (symbol, window_start, window_end, first_price, last_price, move_pct, direction)
+        VALUES %s
+        ON CONFLICT (symbol, window_start, window_end) DO UPDATE SET
+            first_price = EXCLUDED.first_price,
+            last_price = EXCLUDED.last_price,
+            move_pct = EXCLUDED.move_pct,
+            direction = EXCLUDED.direction
+        """,
+        rows,
+    )
 
 # ---------- 6. Start both streams ----------
 raw_query = (
@@ -149,6 +195,14 @@ metrics_query = (
     metrics.writeStream.outputMode("update")  # only send windows that changed
     .foreachBatch(write_metrics)
     .option("checkpointLocation", "checkpoints/metrics")
+    .trigger(processingTime="5 seconds")
+    .start()
+)
+
+alerts_query = (
+    movement.writeStream.outputMode("update")
+    .foreachBatch(write_alerts)
+    .option("checkpointLocation", "checkpoints/alerts")
     .trigger(processingTime="5 seconds")
     .start()
 )
